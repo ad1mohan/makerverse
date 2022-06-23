@@ -6,4 +6,4 @@ This project is under construction
 
 ## Try
 
-Click [Github pages](https://nodejs.org/en/download/).
+Click [Github pages](https://ad1mohan.github.io/makerverse/).
