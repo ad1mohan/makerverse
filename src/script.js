@@ -25,8 +25,20 @@ init();
 animate();
 
 function init() {
+	// Env Loader
+	const cubeTextureLoader = new THREE.CubeTextureLoader();
+	const environmentMapTexture = cubeTextureLoader.load([
+		"./textures/environmentMaps/5/px.png",
+		"./textures/environmentMaps/5/nx.png",
+		"./textures/environmentMaps/5/py.png",
+		"./textures/environmentMaps/5/ny.png",
+		"./textures/environmentMaps/5/pz.png",
+		"./textures/environmentMaps/5/nz.png",
+	]);
+	// environmentMapTexture.encoding = THREE.sRGBEncoding;
+
 	camera = new THREE.PerspectiveCamera(
-		75,
+		60,
 		window.innerWidth / window.innerHeight,
 		1,
 		1000
@@ -34,12 +46,18 @@ function init() {
 	camera.position.y = 10;
 
 	scene = new THREE.Scene();
-	scene.background = new THREE.Color(0xffffff);
+	scene.background = environmentMapTexture;
+	// scene.background = new THREE.Color(0xffffff);
 	scene.fog = new THREE.Fog(0xffffff, 0, 750);
 
+	// Lights
 	const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 0.75);
 	light.position.set(0.5, 1, 0.75);
 	scene.add(light);
+	// Lights
+	const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+	directionalLight.position.set(-1.335, 5, -0.035);
+	scene.add(directionalLight);
 
 	controls = new PointerLockControls(camera, document.body);
 
@@ -125,6 +143,19 @@ function init() {
 		10
 	);
 
+	// Sphere Mesh
+	const sphereGeometry = new THREE.SphereBufferGeometry(10, 32, 32);
+	const sphereMaterial = new THREE.MeshStandardMaterial();
+	sphereMaterial.metalness = 0.6;
+	sphereMaterial.roughness = 0;
+	sphereMaterial.envMap = environmentMapTexture;
+	const sphereMesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
+	scene.add(sphereMesh);
+
+	const updateAllMaterials = () => {
+		sphereMaterial.needsUpdate = true;
+	};
+
 	// floor
 
 	let floorGeometry = new THREE.PlaneGeometry(2000, 2000, 100, 100);
@@ -159,7 +190,9 @@ function init() {
 		new THREE.Float32BufferAttribute(colorsFloor, 3)
 	);
 
-	const floorMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
+	const floorMaterial = new THREE.MeshBasicMaterial({
+		vertexColors: true,
+	});
 
 	const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 	scene.add(floor);
@@ -205,13 +238,40 @@ function init() {
 	//
 
 	renderer = new THREE.WebGLRenderer({ antialias: true });
-	renderer.setPixelRatio(window.devicePixelRatio);
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.outputEncoding = THREE.sRGBEncoding;
+	renderer.toneMapping = THREE.ACESFilmicToneMapping;
+	renderer.toneMappingExposure = 1.2;
+	renderer.physicallyCorrectLights = true;
+
 	document.body.appendChild(renderer.domElement);
 
 	//
 
 	window.addEventListener("resize", onWindowResize);
+
+	// GUI
+	const gui = new dat.GUI();
+	gui.add(floorMaterial, "wireframe").name("floorMaterial wireframe");
+	gui
+		.add(renderer, "toneMappingExposure")
+		.min(0)
+		.max(10)
+		.step(0.01)
+		.name("renderer toneMappingExposure");
+	gui
+		.add(renderer, "toneMapping", {
+			No: THREE.NoToneMapping,
+			Linear: THREE.LinearToneMapping,
+			Reinhard: THREE.ReinhardToneMapping,
+			Cineon: THREE.CineonToneMapping,
+			ACESFilmic: THREE.ACESFilmicToneMapping,
+		})
+		.onFinishChange(() => {
+			renderer.toneMapping = Number(renderer.toneMapping);
+			updateAllMaterials();
+		});
 }
 
 function onWindowResize() {
@@ -219,6 +279,7 @@ function onWindowResize() {
 	camera.updateProjectionMatrix();
 
 	renderer.setSize(window.innerWidth, window.innerHeight);
+	renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 }
 
 function animate() {
